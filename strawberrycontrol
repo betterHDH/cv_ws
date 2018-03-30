@@ -1,0 +1,297 @@
+#include <stdio.h>
+#include <unistd.h>
+// #include <pthread.h>
+#include <iostream>  
+#include <boost/asio.hpp>  
+#include <boost/bind.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>  
+// #include <ros/ros.h>  
+  
+using namespace std;
+using namespace cv;  
+using namespace boost::asio;
+
+// Mat frame;
+
+double ColortoSelect()
+{
+
+VideoCapture capture(0);
+Mat frame;
+    while(1){
+    capture>>frame;
+    int i,j,pixel_sum = frame.rows*frame.cols,pixel_red=0, red_value=30;
+    double color_grade=0, volume_grade=0;
+    long color_sum=0;
+    for(i=0; i<frame.rows; i++)
+    {
+        for(j=0; j<frame.cols; j++)
+        if (frame.at<cv::Vec3b>(i,j)[2] > red_value && frame.at<cv::Vec3b>(i,j)[0] > 110 && frame.at<cv::Vec3b>(i,j)[1] < 20 ) 
+        {
+            pixel_red++;
+            // color_sum += frame.at<cv::Vec3b>(i,j)[2];
+        }
+        else 
+        {
+            frame.at<cv::Vec3b>(i,j)[0] = 255;
+            frame.at<cv::Vec3b>(i,j)[1] = 255;
+            frame.at<cv::Vec3b>(i,j)[2] = 255;
+        }
+    }
+    imshow("test", frame);
+    waitKey(30);
+    volume_grade=pixel_red/((double)pixel_sum);
+    color_grade=color_sum/(pixel_red*255.0);
+    cout<<pixel_red<<endl;
+    return volume_grade;
+    }
+    
+
+}
+
+
+
+
+
+
+void HandleRead(boost::system::error_code ec, std::size_t bytes_transferred)
+{
+
+}
+
+  
+int main(int argc, char* argv[])  
+{    
+                int i;
+    char order[11]={0xff, 0xff, 0x01, 0x01, 0x00, 0x03, 0x01, 0x02, 0x08}, recv[10];  //order[6]=0x01, 0x02
+    char buf1[8];
+    double score=0.48;
+
+    char 
+    Handshake[8]            =   {0xff, 0xff, 0x01, 0x01, 0x00, 0x02, 0x00, 0x04},
+    DownerStart[8]          =   {0xff, 0xff, 0x01, 0x01, 0x00, 0x02, 0x01, 0x05}, 
+    DownerStop[8]           =   {0xff, 0xff, 0x01, 0x01, 0x00, 0x02, 0x02, 0x06}, 
+    AuxCollecterStart[11]   =   {0xff, 0xff, 0x01, 0x01, 0x00, 0x03, 0x03, 0x00, 0x08}, 
+    AuxCollecterStop[11]    =   {0xff, 0xff, 0x01, 0x01, 0x00, 0x03, 0x03, 0x01, 0x09},
+    MainCutterStart[11]     =   {0xff, 0xff, 0x01, 0x01, 0x00, 0x03, 0x04, 0x00, 0x09},
+    MainCutterStop[11]      =   {0xff, 0xff, 0x01, 0x01, 0x00, 0x03, 0x04, 0x01, 0x0a},
+    AuxCutterStart[11]      =   {0xff, 0xff, 0x01, 0x01, 0x00, 0x02, 0x05, 0x09},
+    MainCollecterStart[11]  =   {0xff, 0xff, 0x01, 0x01, 0x00, 0x03, 0x06, 0x01, 0x0c},
+    MainCollecterStop[11]   =   {0xff, 0xff, 0x01, 0x01, 0x00, 0x03, 0x06, 0x00, 0x0b},
+    MotorController[11]     =   {0xff, 0xff, 0x01, 0x01, 0x00, 0x02, 0x07, 0x0b}, 
+    BeltStart[11]           =   {0xff, 0xff, 0x01, 0x01, 0x00, 0x02, 0x08, 0x0c},
+    BeltStop[11]            =   {0xff, 0xff, 0x01, 0x01, 0x00, 0x02, 0x09, 0x0d},
+    AllStop[11]             =      {}; 
+    
+    io_service iosev;
+    serial_port sp(iosev, "/dev/ttyUSB0"), *serialPort;
+    serialPort=&sp;
+    sp.set_option(serial_port::baud_rate(115200));
+    sp.set_option(serial_port::flow_control(serial_port::flow_control::none));
+    sp.set_option(serial_port::parity(serial_port::parity::none));
+    sp.set_option(serial_port::stop_bits(serial_port::stop_bits::one));
+    sp.set_option(serial_port::character_size(8));
+    system("stty -icanon");
+    // memset(buf, 0 ,sizeof(buf));
+    char key;
+    key = getchar();
+            if (key == 'j')
+        {
+                    // write(sp, buffer(DownerStart, 9));
+                    // sleep(1);
+                    // write(sp, buffer(BeltStart, 9));
+                    double count=0;
+                    count=ColortoSelect();
+                    cout<<count<<endl;
+            while(1)
+            {
+                // if(count==6) 
+                // {
+                //     count=0;
+                //     // write(sp, buffer(MainCollecterStart, 9)); //-q
+                //     waitKey(500);
+                //     // write(sp, buffer(MainCollecterStop, 9));//-t
+                // }
+                if(ColortoSelect()>score)
+                {
+                    cout<<ColortoSelect()<<endl;
+                    write(sp, buffer(AuxCutterStart, 9));//-a
+                    waitKey(30);
+                    // write(sp, buffer(MainCutterStart, 9));
+                    // waitKey(2000);
+                    // write(sp, buffer(MainCutterStop, 9));
+                    // write(sp, buffer(AuxCollecterStart, 9));
+                    // waitKey(30);
+                    // write(sp, buffer(MotorController, 9));
+                    // waitKey(30);
+                    // write(sp, buffer(AuxCollecterStop, 9));
+                    count++;
+                }
+
+                waitKey(30);
+            }
+
+        }
+
+
+    while(1)
+{        
+        //TODO:皮带轮系统上电
+        //TODO:履带上电
+        //if 草莓 true 剪切动作 控制盒子旋转 草莓计数
+        //if 计数满6个 添加新盒子动作 
+        // memset(buf1, 0, sizeof(buf1));
+        char key;
+        cout<<"Key"<<endl;
+        key=getchar();
+        // cout<<key<<endl;
+        // cout<<key<<endl;
+
+        // if (key=='s')
+        // {
+        //     cout<<"stop"<<endl;
+        //     write(sp, buffer(AllStop, 12));
+        // } 
+// c-q-a-d-s-z-f-x-r
+        if (key=='c')
+        {
+            cout<<"连接"<<endl;
+            write(sp, buffer(Handshake, 8));
+        }
+
+        if (key=='q')
+        {
+            cout<<"底盘启动"<<endl;
+            write(sp, buffer(DownerStart, 9));
+        } 
+        // else continue;
+
+        if (key=='w')
+        {
+            cout<<"底盘关闭"<<endl;
+            write(sp, buffer(DownerStop, 12));
+        } 
+
+        if (key=='e')
+        {
+            cout<<"主收集器运动"<<endl;
+            write(sp, buffer(MainCollecterStart, 12));
+        } 
+
+        if (key=='r')
+        {
+            cout<<"主收集器返回"<<endl;
+            write(sp, buffer(MainCollecterStop, 12));
+        } 
+
+
+        if (key=='a')
+        {
+            cout<<"副剪切器启动"<<endl;
+            write(sp, buffer(AuxCutterStart, 12));
+        } 
+
+        if (key=='s')
+        {
+            cout<<"主剪切器运动"<<endl;
+            write(sp, buffer(MainCutterStart, 12));
+        } 
+
+        if (key=='d')
+        {
+            cout<<"主剪切器收回"<<endl;
+            write(sp, buffer(MainCutterStop, 12));
+        } 
+
+
+        if (key=='z')
+        {
+            cout<<"副收集器启动"<<endl;
+            write(sp, buffer(AuxCollecterStart, 12));
+        } 
+
+        if (key=='x')
+        {
+            cout<<"副收集器停止"<<endl;
+            write(sp, buffer(AuxCollecterStop, 12));
+        } 
+
+        if (key=='t')
+        {
+            cout<<"皮带启动"<<endl;
+            write(sp, buffer(BeltStart, 11));
+        } 
+
+        if (key=='y')
+        {
+            cout<<"皮带停止"<<endl;
+            write(sp, buffer(BeltStop, 11));
+        }
+
+        if (key=='f')
+        {
+            cout<<"步进电机控制"<<endl;
+            write(sp, buffer(MotorController, 11));
+        }
+
+        // if (key == 'j')
+        // {
+        //             // write(sp, buffer(DownerStart, 9));
+        //             // sleep(1);
+        //             // write(sp, buffer(BeltStart, 9));
+        //             int count=0;
+        //             cout<<ColortoSelect()<<endl;
+        //     while(1)
+        //     {
+        //         // if(count==6) 
+        //         // {
+        //         //     count=0;
+        //         //     // write(sp, buffer(MainCollecterStart, 9)); //-q
+        //         //     waitKey(500);
+        //         //     // write(sp, buffer(MainCollecterStop, 9));//-t
+        //         // }
+        //         if(ColortoSelect()>score)
+        //         {
+        //             cout<<ColortoSelect()<<endl;
+        //             write(sp, buffer(AuxCutterStart, 9));//-a
+        //             waitKey(1000);
+        //             // write(sp, buffer(MainCutterStart, 9));
+        //             // waitKey(2000);
+        //             // write(sp, buffer(MainCutterStop, 9));
+        //             // write(sp, buffer(AuxCollecterStart, 9));
+        //             // waitKey(30);
+        //             // write(sp, buffer(MotorController, 9));
+        //             // waitKey(30);
+        //             // write(sp, buffer(AuxCollecterStop, 9));
+        //             count++;
+        //         }
+
+        //         waitKey(30);
+        //     }
+
+        // }
+        
+                
+                async_read(*serialPort, buffer(buf1), HandleRead);
+                cout<<"key "<<key<<":";
+                for(i=0; i<8; i++)
+                {
+                // read(sp, buffer(buf1));
+                    printf("%x", buf1[i]);
+                // cout<<hex<<(int)buf1[i]<<endl;
+                }
+        
+        // sleep(1);
+        cout<<endl;
+        iosev.run();
+}
+ 
+    // char file[9]={0xff, 0xff, 0x01, 0x01, 0x00, 0x03, 0x01, 0x02, 0x08};
+    //节点文件    
+    // 设置参数  
+    // 向串口写数据  
+    // 向串口读数据  
+    return 0;  
+}  
